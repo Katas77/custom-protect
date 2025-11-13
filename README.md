@@ -1,4 +1,4 @@
-# README — Custom JWT security без spring-boot-starter-security
+# Custom JWT security без spring-boot-starter-security
 
 
 ## 1. Краткое описание
@@ -16,7 +16,6 @@
 - Примеры публичного, защищённого и ролевого эндпойнтов.
 
 ---
-
 
 
 ## 3. Конфигурация (application.properties / env)
