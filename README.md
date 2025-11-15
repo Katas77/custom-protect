@@ -5,26 +5,20 @@
 ---
 
 ## 1. Краткое описание
-Проект реализует минимальный кастомный механизм аутентификации/авторизации на основе JWT без использования `spring-boot-starter-security`. Для защиты конечных точек используется AOP (аспекты), которые проверяют JWT и роли через методы `AuthService`:
-- `@JwtAuth` — проверка подлинности токена (Bearer).
-- `@JwtAuthWithRoles(allowedRoles = {...})` — проверка наличия хотя бы одной роли.
+Проект реализует минимальный кастомный механизм аутентификации/авторизации на основе JWT без использования `spring-boot-starter-security`. Для защиты конечных точек используется`:
 
-Ключевые изменения: устранёна проблема self-invocation — все аннотированные методы теперь вызываются через прокси (рефакторинг в отдельный сервис/бин), либо внутренняя логика использует программные вызовы `AuthService.hasAnyRole(...)`. Также проверка ролей выполняется на уровне БД (exists‑запрос), чтобы избежать LazyInitializationException.
+```java
 
----
 
-## 2. Фичи
-- JWT: создание и валидация (`JwtUtils`).
-- AOP-аспект (`JwtAuthAspect`) централизует проверку токена и ролей.
-- Проверка ролей через эффективный репозиторный exists‑запрос (без инициализации ленивых коллекций).
-- Решение проблемы self-invocation: защищённая логика вынесена в отдельный проксируемый бин (`SecuredService`), при необходимости доступны безопасные альтернативы.
-- Минимальные зависимости — подходит без Spring Security.
-- Поддержка BCrypt для хеширования паролей.
-- Примеры публичных, защищённых и ролевых эндпойнтов.
+@JwtAuth //— проверка подлинности токена (Bearer).
+
+@JwtAuthWithRoles(allowedRoles = {"ROLE_ADMIN"}) //— проверка наличия хотя бы одной роли.
+
+```
 
 ---
 
-## 3. Конфигурация (application.properties / env)
+## 2. Конфигурация (application.properties / env)
 
 ```properties
 # JWT
@@ -36,7 +30,7 @@ jwt.expiration-ms=${JWT_EXPIRATION_MS:3600000}
 
 ---
 
-## 4. Как теперь решена проблема self-invocation
+## 3. Как теперь решена проблема self-invocation
 
 Основной подход (реализованный в проекте):
 - Рефакторинг: логика, требующая AOP-проверок (методы с `@JwtAuth` / `@JwtAuthWithRoles`), вынесена в отдельный бин `SecuredService`. Контроллеры и другие бины вызывают эти методы через Spring, поэтому вызовы проходят через прокси, и аспект срабатывает корректно.
@@ -53,7 +47,7 @@ jwt.expiration-ms=${JWT_EXPIRATION_MS:3600000}
 
 ---
 
-## 5. Примеры использования аннотаций
+## 4. Примеры использования аннотаций
 
 ```java
     @GetMapping("/public")
@@ -80,31 +74,11 @@ public String userOrAdminEndpoint() {
 }
 ```
 
-Пример SecuredService:
-
-```java
-@Service
-public class SecuredService {
-
-    @JwtAuth
-    public String secureMethod() {
-        return "This is secured by JWT only";
-    }
-
-    @JwtAuthWithRoles(allowedRoles = {"ROLE_ADMIN"})
-    public String adminMethod() {
-        return "This is admin only";
-    }
-}
-```
-
-Такой вызов идёт через прокси и аспект применяется корректно — self‑invocation больше не проблема.
-
----
 
 
 
-## 6. Как тестировать (curl)
+
+## 5. Как тестировать (curl)
 
 Регистрация:
 curl -X POST -H "Content-Type: application/json" -d '{"name":"john","password":"pass","email":"john@example.com"}' http://localhost:8080/api/v1/auth/register
