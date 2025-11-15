@@ -1,4 +1,4 @@
-package com.example.custom_protect.aop;
+package com.example.custom_protect.security;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,6 +7,5 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface JwtAuthWithRoles {
-    String[] allowedRoles() default {};
+public @interface JwtAuth {
 }

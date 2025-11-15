@@ -4,6 +4,7 @@ import com.example.custom_protect.dto.LoginRequest;
 import com.example.custom_protect.exception.AuthenticationException;
 import com.example.custom_protect.jwt.JwtUtils;
 import com.example.custom_protect.model.User;
+import com.example.custom_protect.model.en.RoleType;
 import com.example.custom_protect.repository.UserRepository;
 import com.example.custom_protect.utils.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,20 +41,26 @@ public class AuthService {
             throw new AuthenticationException("Токен не валиден: протух или подпись некорректна.");
         }
     }
-
     public boolean hasAnyRole(String token, String[] requiredRoles) {
         String username = getUsernameFromToken(token);
-        Optional<User> userOpt = userRepository.findByName(username);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            List<String> userRoleNames = user.getRoles().stream()
-                    .map(role -> role.getAuthority().name()) // RoleType.name()
-                    .toList();
-
-            return Arrays.stream(requiredRoles)
-                    .anyMatch(userRoleNames::contains);
+        if (username == null || requiredRoles == null || requiredRoles.length == 0) {
+            return false;
         }
-        return false;
+
+        Set<RoleType> roles;
+        try {
+            roles = Arrays.stream(requiredRoles)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(String::toUpperCase) // если ваши enum-имена в верхнем регистре
+                    .map(RoleType::valueOf)
+                    .collect(Collectors.toSet());
+        } catch (IllegalArgumentException ex) {
+            // Если пришла неизвестная роль — считаем, что совпадений нет
+            return false;
+        }
+
+        return userRepository.existsByNameAndRolesAuthorityIn(username, roles);
     }
 
     private String getUsernameFromToken(String token) {

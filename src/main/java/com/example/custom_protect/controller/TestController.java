@@ -1,7 +1,7 @@
 package com.example.custom_protect.controller;
 
-import com.example.custom_protect.aop.JwtAuth;
-import com.example.custom_protect.aop.JwtAuthWithRoles;
+import com.example.custom_protect.security.JwtAuth;
+import com.example.custom_protect.security.JwtAuthWithRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

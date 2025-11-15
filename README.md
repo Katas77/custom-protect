@@ -1,37 +1,59 @@
 # Custom JWT security без spring-boot-starter-security
 
+- механизм аутентификации/авторизации надёжен и корректно работает как для внешних вызовов, так и при вызове внутри приложения.
+
+---
 
 ## 1. Краткое описание
-Проект реализует минимальный кастомный механизм аутентификации/авторизации на основе JWT без использования `spring-boot-starter-security`. Для защиты конечных точек используется AOP (асперекты), которые проверяют JWT и роли через методы `AuthService`:
-- @JwtAuth — проверка подлинности токена (Bearer).
-- @JwtAuthWithRoles(allowedRoles = {...}) — проверка наличия хотя бы одной роли.
+Проект реализует минимальный кастомный механизм аутентификации/авторизации на основе JWT без использования `spring-boot-starter-security`. Для защиты конечных точек используется AOP (аспекты), которые проверяют JWT и роли через методы `AuthService`:
+- `@JwtAuth` — проверка подлинности токена (Bearer).
+- `@JwtAuthWithRoles(allowedRoles = {...})` — проверка наличия хотя бы одной роли.
+
+Ключевые изменения: устранёна проблема self-invocation — все аннотированные методы теперь вызываются через прокси (рефакторинг в отдельный сервис/бин), либо внутренняя логика использует программные вызовы `AuthService.hasAnyRole(...)`. Также проверка ролей выполняется на уровне БД (exists‑запрос), чтобы избежать LazyInitializationException.
 
 ---
 
 ## 2. Фичи
-- Аутентификация через JWT (создание/валидация в `JwtUtils`).
-- Централизованная проверка токена и ролей через AOP-аспект (`JwtAuthAspect`).
-- Минимальные зависимости — можно обойтись без полного Spring Security.
-- Поддержка BCrypt (рекомендуется) или jBCrypt (если хотите полностью отказаться от артефактов Spring).
-- Примеры публичного, защищённого и ролевого эндпойнтов.
+- JWT: создание и валидация (`JwtUtils`).
+- AOP-аспект (`JwtAuthAspect`) централизует проверку токена и ролей.
+- Проверка ролей через эффективный репозиторный exists‑запрос (без инициализации ленивых коллекций).
+- Решение проблемы self-invocation: защищённая логика вынесена в отдельный проксируемый бин (`SecuredService`), при необходимости доступны безопасные альтернативы.
+- Минимальные зависимости — подходит без Spring Security.
+- Поддержка BCrypt для хеширования паролей.
+- Примеры публичных, защищённых и ролевых эндпойнтов.
 
 ---
 
-
 ## 3. Конфигурация (application.properties / env)
-Пример переменных, которые нужно задать (в application.properties или в окружении):
 
 ```properties
 # JWT
-jwt.secret=${JWT_SECRET:}                 # строка или Base64-ключ (обязательно установить в prod)
+jwt.secret=${JWT_SECRET:}                 # обязательно задать в prod
 jwt.expiration-ms=${JWT_EXPIRATION_MS:3600000}
 ```
 
-Рекомендация: в production задавайте JWT_SECRET через env/секретный хранилище; ключ должен быть минимум 32 байта (256 бит) или Base64-encoded.
+Рекомендация: JWT_SECRET хранить в env/секретном хранилище; ключ минимум 32 байта (256 бит) либо Base64.
 
 ---
 
-## 4. Аннотации 
+## 4. Как теперь решена проблема self-invocation
+
+Основной подход (реализованный в проекте):
+- Рефакторинг: логика, требующая AOP-проверок (методы с `@JwtAuth` / `@JwtAuthWithRoles`), вынесена в отдельный бин `SecuredService`. Контроллеры и другие бины вызывают эти методы через Spring, поэтому вызовы проходят через прокси, и аспект срабатывает корректно.
+
+Почему это надёжно:
+- Spring AOP работает через прокси; вызовы через прокси — корректно применяют аспекты.
+- Вынесение в отдельный бин — простое, прозрачное и легко поддерживаемое решение.
+
+Альтернативы (если нужен другой подход):
+- Программный вызов: внутри того же бина вызывать `authService.hasAnyRole(...)` напрямую — надёжно и явно.
+- Self‑injection с `@Lazy` или `AopContext.currentProxy()` + `@EnableAspectJAutoProxy(exposeProxy = true)` — работает, но менее предпочтительно (сложнее в поддержке).
+- AspectJ weaving (compile/load-time) — мощно, но требует дополнительной настройки.
+
+
+---
+
+## 5. Примеры использования аннотаций
 
 ```java
     @GetMapping("/public")
@@ -58,23 +80,31 @@ public String userOrAdminEndpoint() {
 }
 ```
 
+Пример SecuredService:
 
+```java
+@Service
+public class SecuredService {
+
+    @JwtAuth
+    public String secureMethod() {
+        return "This is secured by JWT only";
+    }
+
+    @JwtAuthWithRoles(allowedRoles = {"ROLE_ADMIN"})
+    public String adminMethod() {
+        return "This is admin only";
+    }
+}
+```
+
+Такой вызов идёт через прокси и аспект применяется корректно — self‑invocation больше не проблема.
 
 ---
 
-## 5. Как работает AOP-решение (логика)
-- При вызове метода с @JwtAuth или @JwtAuthWithRoles аспект получает заголовок Authorization.
-- Если заголовок отсутствует или не "Bearer ...", бросаем AuthenticationException.
-- Аспект вызывает `AuthService.validateToken(token)` для базовой валидации (подпись + срок).
-- Для ролей аспект вызывает `AuthService.hasAnyRole(token, allowedRoles)` — этот метод извлекает роли из токена (claim "roles") или загружает роли пользователя и сверяет.
 
-Важно: AOP запускается после разрешения Spring MVC и до выполнения метода контроллера. Однако:
-- AOP не перехватит вызовы, если метод вызывается внутри того же бина напрямую (self-invocation).
-- Если вам нужна фильтрация на уровне HTTP (например, для статических ресурсов), лучше использовать Filter.
 
----
-
-## 6. Примеры curl для тестирования
+## 6. Как тестировать (curl)
 
 Регистрация:
 curl -X POST -H "Content-Type: application/json" -d '{"name":"john","password":"pass","email":"john@example.com"}' http://localhost:8080/api/v1/auth/register
@@ -82,30 +112,23 @@ curl -X POST -H "Content-Type: application/json" -d '{"name":"john","password":"
 Логин:
 curl -X POST -H "Content-Type: application/json" -d '{"name":"john","password":"pass"}' http://localhost:8080/api/v1/auth/login
 
-Вызов публичного:
+Публичный:
 curl http://localhost:8080/public
 
-Вызов защищённого:
+Защищённый:
 curl -H "Authorization: Bearer <TOKEN>" http://localhost:8080/secure
 
-Вызов ролевого:
+Ролевой:
 curl -H "Authorization: Bearer <TOKEN>" http://localhost:8080/admin
 
 ---
 
 
 ##  Контакты
-
-- **Разработчик**: [Роман]
-- **Версия**: 1.0.0
-- **Дата**:  22 Ноябрь 2025
-
-
-
----
-
-
-✉ **Контакты**: [krp77@mail.ru](mailto:krp77@mail.ru)
+- Разработчик: Роман
+- Версия: 1.0.0
+- Дата: 22 Ноябрь 2025  
+  ✉ krp77@mail.ru
 
 ---
 

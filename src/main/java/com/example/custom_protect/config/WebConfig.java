@@ -1,0 +1,22 @@
+// WebConfig.java — регистрация интерсептора
+package com.example.custom_protect.config;
+
+import com.example.custom_protect.security.JwtAuthInterceptor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+@RequiredArgsConstructor
+public class WebConfig implements WebMvcConfigurer {
+
+    private final JwtAuthInterceptor jwtAuthInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // Можно добавить pathPatterns при необходимости
+        registry.addInterceptor(jwtAuthInterceptor);
+    }
+}
+

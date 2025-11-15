@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException e) {
-        ErrorResponse error = new ErrorResponse(e.getMessage(), HttpStatus.CONFLICT.value()); // 409 вместо 401
+        ErrorResponse error = new ErrorResponse(e.getMessage(), HttpStatus.CONFLICT.value());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
