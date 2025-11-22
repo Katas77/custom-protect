@@ -20,12 +20,6 @@ public class Password {
         return Base64.getEncoder().encodeToString(passwordBytes);
     }
 
-    /**
-     * Декодирует строку пароля из Base64 обратно в исходную строку.
-     *
-     * @param encodedPassword Закодированная строка в формате Base64.
-     * @return Декодированная (исходная) строка пароля.
-     */
     public static String decodePassword(String encodedPassword) {
         if (encodedPassword == null) {
             return null;

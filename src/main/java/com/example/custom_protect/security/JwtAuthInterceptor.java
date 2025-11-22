@@ -1,6 +1,5 @@
 package com.example.custom_protect.security;
 
-
 import com.example.custom_protect.exception.AuthenticationException;
 import com.example.custom_protect.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +21,6 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
-
         HandlerMethod hm = (HandlerMethod) handler;
 
         // Сперва получаем аннотации с метода, если нет — с класса
@@ -39,7 +37,7 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new AuthenticationException("Authorization header is missing or invalid.");
+            throw new AuthenticationException("Заголовок авторизации отсутствует или недействителен.");
         }
 
         String token = authHeader.substring(7);
@@ -50,7 +48,7 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
             if (allowedRoles.length > 0) {
                 boolean hasRole = authService.hasAnyRole(token, allowedRoles);
                 if (!hasRole) {
-                    throw new AuthenticationException("Access denied: insufficient roles.");
+                    throw new AuthenticationException("Доступ запрещен: недостаточно ролей.");
                 }
             }
         }

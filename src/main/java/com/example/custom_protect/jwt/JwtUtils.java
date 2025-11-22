@@ -25,7 +25,7 @@ public class JwtUtils {
     private String secret;
 
     @Value("${jwt.expiration-ms:3600000}")
-    private long jwtExpiration; // milliseconds
+    private long jwtExpiration;
 
     private SecretKey getSigningKey() {
         byte[] keyBytes;
@@ -35,7 +35,7 @@ public class JwtUtils {
             keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         }
         if (keyBytes.length < 32) {
-            throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes). Provide a longer secret or a Base64-encoded key.");
+            throw new IllegalStateException("Секретный ключ JWT должен быть длиной не менее 256 бит (32 байта). Предоставьте более длинный секретный ключ или ключ в кодировке Base64.");
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }
@@ -59,7 +59,7 @@ public class JwtUtils {
                     .parseClaimsJws(token);
             return !isTokenExpired(token);
         } catch (JwtException e) {
-            log.warn("Invalid JWT token: {}", e.getMessage());
+            log.warn("Недействительный токен JWT:{}", e.getMessage());
             return false;
         }
     }

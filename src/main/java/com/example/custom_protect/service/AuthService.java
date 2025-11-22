@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -52,7 +51,7 @@ public class AuthService {
             roles = Arrays.stream(requiredRoles)
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
-                    .map(String::toUpperCase) // если ваши enum-имена в верхнем регистре
+                    .map(String::toUpperCase)
                     .map(RoleType::valueOf)
                     .collect(Collectors.toSet());
         } catch (IllegalArgumentException ex) {
@@ -64,6 +63,6 @@ public class AuthService {
     }
 
     private String getUsernameFromToken(String token) {
-        return jwtUtils.extractUsername(token); // Добавьте метод в JwtUtils
+        return jwtUtils.extractUsername(token);
     }
 }

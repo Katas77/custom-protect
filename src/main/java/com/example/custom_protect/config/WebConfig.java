@@ -1,4 +1,3 @@
-// WebConfig.java — регистрация интерсептора
 package com.example.custom_protect.config;
 
 import com.example.custom_protect.security.JwtAuthInterceptor;
@@ -15,7 +14,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // Можно добавить pathPatterns при необходимости
         registry.addInterceptor(jwtAuthInterceptor);
     }
 }
